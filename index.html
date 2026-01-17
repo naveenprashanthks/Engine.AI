@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Engine.AI - Pro</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css"
+      rel="stylesheet"
+    />
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"
+      defer
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"
+      defer
+    ></script>
+
+    <style>
+      :root {
+        /* --- DARK THEME (Default) --- */
+        --bg-main: #0a0a0f; --bg-panel: #11111f; --bg-panel-trans: rgba(17, 17, 31, 0.8);
+        --bg-terminal: rgba(10, 10, 15, 0.7); --bg-input: rgba(10, 10, 15, 0.9);
+        --text-main: #e6edf3; --text-secondary: #8b949e; --border-color: rgba(138, 43, 226, 0.2);
+        /* --- Shared --- */
+        --accent: #8a2be2; --accent-secondary: #4f46e5; --accent-hover: #9d4edd;
+        --accent-trans-1: rgba(138, 43, 226, 0.1); --accent-trans-2: rgba(138, 43, 226, 0.2);
+        --accent-trans-3: rgba(138, 43, 226, 0.3); --text-success: #2ecc71; --text-error: #e74c3c;
+        --radius: 12px; --sidebar-width: 240px; --header-height: 70px;
+        --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        --font-mono: "JetBrains Mono", "Fira Code", monospace;
+      }
+      body.light-mode {
+        --bg-main: #f4f7fa; --bg-panel: #ffffff; --bg-panel-trans: rgba(255, 255, 255, 0.8);
+        --bg-terminal: rgba(255, 255, 255, 0.7); --bg-input: rgba(255, 255, 255, 0.9);
+        --text-main: #1a202c; --text-secondary: #5a6472; --border-color: rgba(0, 0, 0, 0.1);
+        --prism-bg: #f9f9f9; --prism-color: #393a34; --prism-keyword: #07a; --prism-string: #690;
+        --prism-comment: #708090; --prism-function: #dd4a68; --prism-number: #905;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { background: var(--bg-main); color: var(--text-main); font-family: var(--font-ui); margin: 0; height: 100vh; display: flex; overflow: hidden; transition: background-color 0.3s, color 0.3s; }
+      /* Voice Input Styles */
+      #micBtn {
+        background: transparent;
+        border: 1px solid var(--accent-trans-2);
+        color: var(--text-secondary);
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 5px;
+      }
+      #micBtn:hover {
+        color: var(--text-main);
+        border-color: var(--accent);
+        background: var(--accent-trans-1);
+      }
+      
+      /* Listening Animation (Pulsing Red) */
+      #micBtn.listening {
+        color: #ef4444; /* Red color */
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+        animation: pulse-mic 1.5s infinite;
+      }
+      
+      @keyframes pulse-mic {
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+      }
+      /* Sidebar Styles */
+      .sidebar { width: var(--sidebar-width); background: var(--bg-panel); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; box-shadow: 0 0 30px rgba(138, 43, 226, 0.1); z-index: 10; transition: width 0.3s ease, background-color 0.3s; }
+      .sidebar.collapsed { width: 70px; }
+      .sidebar.collapsed .nav-title, .sidebar.collapsed .logo, .sidebar.collapsed .nav-item span:not(.nav-icon), .sidebar.collapsed .file-tree-container { display: none; }
+      .sidebar.collapsed .nav-item, .sidebar.collapsed .logo-container { justify-content: center; }
+      .sidebar.collapsed .logo-container { padding: 0 10px 20px; }
+      .logo-container { padding: 0 20px 20px; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; height: var(--header-height); flex-shrink: 0; }
+      .logo { font-size: 1.5rem; font-weight: 700; background: linear-gradient(90deg, var(--accent), var(--accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 1px; }
+      .collapse-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.2rem; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+      .collapse-btn:hover { color: var(--accent); }
+      .nav-section { margin-bottom: 20px; }
+      .nav-section.scrollable { flex: 1; overflow-y: auto; overflow-x: hidden; }
+      .nav-title { font-size: 0.8rem; color: var(--text-secondary); padding: 0 20px 10px; text-transform: uppercase; letter-spacing: 1px; transition: opacity 0.3s; }
+      .nav-item { padding: 12px 20px; display: flex; align-items: center; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; font-weight: 500; gap: 10px; }
+      .nav-item:hover { background: var(--accent-trans-1); border-right: 3px solid var(--accent); }
+      .nav-item.active { background: var(--accent-trans-2); border-right: 3px solid var(--accent); color: var(--accent); }
+      .nav-icon { min-width: 20px; text-align: center; }
+
+      /* File Tree Styles */
+      .file-tree-container { padding: 0 20px; }
+      .file-tree { list-style: none; padding-left: 0; font-family: var(--font-mono); font-size: 0.85rem; }
+      .file-tree ul { list-style: none; padding-left: 20px; }
+      .file-tree-item { padding: 6px 0; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--text-secondary); transition: color 0.2s; }
+      .file-tree-item:hover { color: var(--text-main); }
+      .file-tree-item.folder > .file-icon { color: var(--accent); }
+      .file-tree-item .file-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .file-tree-item ul { display: block; }
+      .file-tree-item.collapsed > ul { display: none; }
+      .file-tree-item.collapsed > .folder-toggle { transform: rotate(-90deg); }
+      .folder-toggle { transition: transform 0.2s; }
+      .file-tree-item .lucide { width: 16px; height: 16px; flex-shrink: 0; }
+
+      /* Main Content Area */
+      .main-content { position: relative; flex: 1; display: flex; flex-direction: column; overflow: hidden; transition: margin-left 0.3s ease; width: 100%; }
+      .main-content.expanded { margin-left: calc(-1 * var(--sidebar-width) + 70px); }
+
+      .header { height: var(--header-height); background: var(--bg-panel-trans); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; backdrop-filter: blur(10px); flex-shrink: 0; }
+      .header-title { font-size: 1.3rem; font-weight: 600; background: linear-gradient(90deg, var(--accent), var(--accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+      .header-actions { display: flex; gap: 15px; }
+      .header-btn { background: var(--accent-trans-1); border: 1px solid var(--accent-trans-3); color: var(--text-main); padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; font-weight: 500; font-family: var(--font-ui); display: inline-flex; align-items: center; gap: 6px; }
+      .header-btn .lucide { width: 14px; height: 14px; }
+      .header-btn:hover { background: var(--accent-trans-2); box-shadow: 0 0 10px rgba(138, 43, 226, 0.3); }
+      /* NEW: Style for active project mode button */
+      .header-btn.active, #projectModeBtn.active {
+        background: var(--accent-trans-2);
+        border: 1px solid var(--accent);
+        box-shadow: 0 0 10px rgba(138, 43, 226, 0.3);
+      }
+
+
+      /* Settings Panel */
+      .settings-panel { display: none; flex-direction: column; position: absolute; top: 0; right: 0; bottom: 0; width: 300px; background: var(--bg-main); border-left: 1px solid var(--border-color); z-index: 100; padding: 20px; box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1); animation: slide-in 0.3s ease-out; transition: background-color 0.3s; }
+      @keyframes slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+      .settings-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+      .settings-title { font-size: 1.2rem; font-weight: 600; }
+      .settings-close-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; display: flex; }
+      .settings-close-btn:hover { color: var(--text-main); }
+      .setting-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-bottom: 20px; }
+      .theme-switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+      .theme-switch input { opacity: 0; width: 0; height: 0; }
+      .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-panel); border: 1px solid var(--border-color); transition: 0.4s; border-radius: 26px; }
+      .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: var(--text-secondary); transition: 0.4s; border-radius: 50%; }
+      input:checked + .slider { background-color: var(--accent); border-color: var(--accent); }
+      input:checked + .slider:before { transform: translateX(23px); background-color: white; }
+
+      /* Terminal Area */
+      .terminal-container { flex: 1; display: flex; flex-direction: column; padding: 30px; overflow: hidden; position: relative; transition: all 0.3s ease; }
+      .terminal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0; }
+      .terminal-title { font-size: 1.1rem; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+      #terminal { background: var(--bg-panel); flex: 1; border-radius: var(--radius); display: flex; flex-direction: column; border: 1px solid var(--accent-trans-3); box-shadow: 0 0 30px rgba(138, 43, 226, 0.1); overflow: hidden; position: relative; transition: all 0.3s ease; }
+      #terminal::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); animation: pulse 3s infinite; }
+      @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+      #output { flex: 1; overflow-y: auto; background: var(--bg-terminal); padding: 20px; font-size: 14px; color: var(--text-secondary); line-height: 1.6; font-family: var(--font-mono); }
+      #cwd { color: var(--accent); font-size: 14px; padding: 10px 20px 0; background: var(--bg-terminal); font-family: var(--font-mono); }
+      #input-container { display: flex; align-items: center; background: var(--bg-input); border-top: 1px solid var(--border-color); padding: 10px 15px 10px 20px; position: relative; }
+      .prompt { color: var(--accent); margin-right: 10px; font-weight: 500; }
+      #commandInput { flex: 1; padding: 12px 0; border: none; outline: none; background: transparent; color: var(--text-main); font-size: 14px; font-family: var(--font-mono); }
+      #commandInput::placeholder { color: #6e7681; }
+      #sendBtn { background: linear-gradient(90deg, var(--accent), var(--accent-secondary)); border: none; color: white; font-weight: 500; width: 40px; height: 40px; border-radius: 6px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-left: 10px; }
+      #sendBtn:hover { background: linear-gradient(90deg, var(--accent-hover), var(--accent-secondary)); box-shadow: 0 0 15px rgba(138, 43, 226, 0.4); }
+      #sendBtn:disabled { background: var(--text-secondary); cursor: not-allowed; }
+
+      /* Autocomplete */
+      #autocomplete-box { position: absolute; bottom: 100%; left: 0; right: 0; background: var(--bg-panel); border: 1px solid var(--accent-trans-3); border-bottom: none; max-height: 150px; overflow-y: auto; z-index: 100; }
+      .autocomplete-item { padding: 10px 20px; cursor: pointer; color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.9em; }
+      .autocomplete-item:hover, .autocomplete-item.selected { background: var(--accent-trans-2); color: var(--text-main); }
+
+      /* Interactive Task List */
+      .task-list { background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin: 10px 0; font-family: var(--font-ui); }
+      .task-item { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); transition: color 0.3s; }
+      .task-item.active { color: var(--text-main); }
+      .task-item.success { color: var(--text-success); }
+      .task-item.error { color: var(--text-error); }
+      .task-status { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+      .task-status .lucide { width: 16px; height: 16px; }
+
+      /* Animations */
+      .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--accent-trans-3); border-radius: 50%; border-top-color: var(--accent); animation: spin 1s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-thumb { background: var(--accent-trans-3); border-radius: 10px; }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(138, 43, 226, 0.5); }
+      ::-webkit-scrollbar-track { background: var(--bg-panel); }
+
+      /* Status indicators */
+      .status-indicator { display: inline-flex; align-items: center; margin-left: 10px; }
+      .status-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+      .status-dot.ready { background: #10b981; box-shadow: 0 0 6px #10b981; }
+      .status-dot.processing { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; animation: pulse-orange 1.5s infinite; }
+      .status-dot.error { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+      @keyframes pulse-orange { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+      /* Output formatting */
+      .log-entry { margin-bottom: 10px; opacity: 0; animation: fade-slide-in 0.3s ease-out forwards; }
+      @keyframes fade-slide-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      .log-prompt { color: var(--accent); }
+      .log-success { color: var(--text-success); }
+      .log-error { color: var(--text-error); }
+      .log-info { color: var(--text-secondary); }
+      .clickable-path { color: var(--accent-secondary); text-decoration: underline; cursor: pointer; }
+      .clickable-path:hover { color: var(--accent-hover); }
+
+      /* Prism.js Overrides */
+      pre[class*="language-"] { background: var(--prism-bg, rgba(0, 0, 0, 0.3)) !important; border: 1px solid var(--border-color) !important; border-radius: 8px; margin: 10px 0; font-family: var(--font-mono) !important; color: var(--prism-color, inherit) !important; }
+      body.light-mode .token.keyword { color: var(--prism-keyword); }
+      body.light-mode .token.string { color: var(--prism-string); }
+      body.light-mode .token.comment { color: var(--prism-comment); }
+      body.light-mode .token.function { color: var(--prism-function); }
+      body.light-mode .token.number { color: var(--prism-number); }
+      /* --- Project Mode List Styles --- */
+      .project-structure { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--accent-trans-3); border-radius: 8px; padding: 15px; margin-top: 10px; }
+      .structure-header { color: var(--accent); font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+      .structure-list { list-style: none; padding-left: 10px; margin: 0;}
+      .structure-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-family: var(--font-mono); font-size: 0.9em; }
+      .structure-item.folder-item { color: var(--text-secondary); }
+      .structure-item.file-item { color: var(--text-main); }
+      .structure-item .lucide { width: 14px; height: 14px; opacity: 0.8; }
+      
+      /* NEW: Style for project log output */
+      pre.log-success {
+          font-family: var(--font-mono);
+          white-space: pre-wrap;
+          color: var(--text-success);
+          background: rgba(46, 204, 113, 0.05);
+          border: 1px solid rgba(46, 204, 113, 0.2);
+          padding: 15px;
+          border-radius: 8px;
+          font-size: 0.9em;
+      }
+
+    </style>
+  </head>
+
+  <body>
+    <div class="sidebar" id="sidebar">
+      <div class="logo-container">
+        <div class="logo">Engine</div>
+        <button class="collapse-btn" id="sidebarCollapse">
+          <i data-lucide="chevrons-left"></i>
+        </button>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-title">Workspace</div>
+        <div class="nav-item active">
+          <span class="nav-icon"><i data-lucide="terminal"></i></span>
+          <span>Terminal</span>
+        </div>
+        <div class="nav-item" id="searchBtn">
+          <span class="nav-icon"><i data-lucide="search"></i></span>
+          <span>Search</span>
+        </div>
+      </div>
+
+      <div class="nav-section scrollable">
+        <div class="nav-title">File Explorer</div>
+        <div class="file-tree-container">
+          <ul class="file-tree" id="fileTree">
+            <li><span class="spinner"></span> Loading files...</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-title">Settings</div>
+        <div class="nav-item" id="configBtn">
+          <span class="nav-icon"><i data-lucide="settings"></i></span>
+          <span>Configuration</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-content" id="mainContent">
+      <div class="header">
+        <div class="header-title">AI Terminal Interface</div>
+        <div class="header-actions">
+          <button class="header-btn" id="newSessionBtn">
+            <i data-lucide="plus-square"></i>
+            New Session
+          </button>
+          <!-- NEW: Project Mode Button -->
+          <button class="header-btn" id="projectModeBtn" title="Toggle Project Mode">
+            <i data-lucide="folder-kanban"></i>
+            Project Mode
+          </button>
+          <button class="header-btn" id="undoBtn" title="Undo Last Action">
+            <i data-lucide="rotate-ccw"></i>
+            Undo
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-panel" id="settingsPanel">
+        <div class="settings-header">
+          <span class="settings-title">Configuration</span>
+          <button class="settings-close-btn" id="settingsCloseBtn">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="setting-item">
+          <span>Light Mode</span>
+          <label class="theme-switch">
+            <input type="checkbox" id="themeToggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        </div>
+
+      <div class="terminal-container" id="terminalContainer">
+         <div class="terminal-header">
+           <div class="terminal-title">
+             <i data-lucide="terminal-square"></i>
+             Command Terminal
+             <span class="status-indicator">
+               <span class="status-dot ready"></span>
+               <span>Ready</span>
+             </span>
+           </div>
+         </div>
+
+         <div id="terminal">
+           <div id="output"></div>
+           <div id="cwd">C:\EngineAI_workspace ></div>
+           <div id="autocomplete-box" style="display: none"></div>
+           <div id="input-container">
+             <span class="prompt">></span>
+             <input
+               type="text"
+               id="commandInput"
+               placeholder="Enter a prompt or command..."
+               autofocus
+             />
+             <button id="micBtn" title="Voice Input">
+               <i data-lucide="mic"></i>
+             </button>
+             <!-- Existing Send Button -->
+             <button id="sendBtn">
+               <i data-lucide="send-horizontal"></i>
+             </button>
+             
+           </div>
+         </div>
+      </div>
+    </div>
+
+
+    <template id="task-list-template">
+      <div class="task-list">
+        <div class="task-item" data-task-id="1">
+          <span class="task-status"><i data-lucide="search"></i></span>
+          <span class="task-label">Analyze user intent...</span>
+        </div>
+        <div class="task-item" data-task-id="2">
+          <span class="task-status"><i data-lucide="cpu"></i></span>
+          <span class="task-label">Waiting for Engine...</span>
+        </div>
+        <div class="task-item" data-task-id="3">
+          <span class="task-status"><i data-lucide="save"></i></span>
+          <span class="task-label">Waiting for file system...</span>
+        </div>
+      </div>
+    </template>
+
+    <script>
+      const API_BASE = "https://ksnp-Engine-Server.hf.space";
+
+      // --- Element References ---
+      const outputEl = document.getElementById("output");
+      const inputEl = document.getElementById("commandInput");
+      const cwdEl = document.getElementById("cwd");
+      const sendBtn = document.getElementById("sendBtn");
+      const statusDot = document.querySelector(".status-dot");
+      const statusText = document.querySelector(".status-indicator span:last-child");
+      const sidebar = document.getElementById("sidebar");
+      const sidebarCollapse = document.getElementById("sidebarCollapse");
+      const mainContent = document.getElementById("mainContent");
+      const fileTreeEl = document.getElementById("fileTree");
+      const taskTemplate = document.getElementById("task-list-template");
+      const autocompleteBox = document.getElementById("autocomplete-box");
+      const newSessionBtn = document.getElementById("newSessionBtn");
+      const searchBtn = document.getElementById("searchBtn");
+      const configBtn = document.getElementById("configBtn");
+      const settingsPanel = document.getElementById("settingsPanel");
+      const settingsCloseBtn = document.getElementById("settingsCloseBtn");
+      const themeToggle = document.getElementById("themeToggle");
+      const undoBtn = document.getElementById("undoBtn");
+      // NEW: Project Mode Button
+      const projectModeBtn = document.getElementById("projectModeBtn");
+      const originalPlaceholder = inputEl.placeholder; // Store the default
+
+      // --- State ---
+      let history = [];
+      let historyIndex = -1;
+      let isProcessing = false;
+      let isSidebarCollapsed = false;
+      let flatFileList = [];
+      let autocompleteIndex = -1;
+      // NEW: Project Mode State
+      let isProjectMode = false;
+      
+      const welcomeMessage = `<div style="margin-bottom: 15px; color: var(--accent);">Engine.AI - v3.2 </div><div style="margin-bottom: 10px;">Type a command or 'help' to begin.</div>`;
+
+      // --- Initialization ---
+      document.addEventListener("DOMContentLoaded", () => {
+        lucide.createIcons();
+        updateCWD();
+        loadFileTree();
+        appendOutput(welcomeMessage, "log-info");
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light') {
+          document.body.classList.add('light-mode');
+          themeToggle.checked = true;
+        }
+        // Listeners
+        configBtn.addEventListener('click', () => { settingsPanel.style.display = 'flex'; });
+        settingsCloseBtn.addEventListener('click', () => { settingsPanel.style.display = 'none'; });
+        themeToggle.addEventListener('change', () => {
+          if (themeToggle.checked) {
+            document.body.classList.add('light-mode');
+            localStorage.setItem('theme', 'light');
+          } else {
+            document.body.classList.remove('light-mode');
+            localStorage.setItem('theme', 'dark');
+          }
+        });
+        sendBtn.addEventListener("click", sendCommand);
+        newSessionBtn.addEventListener('click', () => {
+          outputEl.innerHTML = '';
+          appendOutput(welcomeMessage, 'log-info');
+          history = [];
+          historyIndex = -1;
+          console.log("New session started.");
+        });
+        searchBtn.addEventListener('click', () => {
+          inputEl.focus();
+          scrollToBottom();
+        });
+        sidebarCollapse.addEventListener("click", toggleSidebar);
+        inputEl.addEventListener("keydown", handleInputKeyDown);
+        inputEl.addEventListener("input", handleAutocompleteInput);
+        undoBtn.addEventListener('click', handleUndoClick);
+        // NEW: Project Mode Listener
+        projectModeBtn.addEventListener('click', toggleProjectMode);
+      });
+
+      // --- NEW: Project Mode Function ---
+      function toggleProjectMode() {
+        isProjectMode = !isProjectMode; // Toggle the state
+
+        if (isProjectMode) {
+          // Mode is ON
+          projectModeBtn.classList.add("active"); // Add "active" style
+          inputEl.placeholder = "Project Mode: Describe your new project (e.g., 'create a flask to-do list app')";
+          appendOutput("Project Mode Activated. Describe the project you want to build.", "log-info");
+          inputEl.focus();
+        } else {
+          // Mode is OFF
+          projectModeBtn.classList.remove("active");
+          inputEl.placeholder = originalPlaceholder; // Restore default placeholder
+          appendOutput("Project Mode Deactivated.", "log-info");
+        }
+      }
+
+      // --- Element References (Add micBtn) ---
+      const micBtn = document.getElementById("micBtn");
+
+      // --- Initialization (Add Listener) ---
+      document.addEventListener("DOMContentLoaded", () => {
+          // ... existing code ...
+          micBtn.addEventListener('click', toggleVoiceInput);
+      });
+
+      // --- Voice Input Logic ---
+      function toggleVoiceInput() {
+          // Check browser support
+          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+          if (!SpeechRecognition) {
+              appendOutput("Voice input is not supported in this browser. Try Chrome or Edge.", "log-error");
+              return;
+          }
+
+          if (micBtn.classList.contains("listening")) {
+              // If already listening, stop (though usually it stops automatically)
+              // We rely on the recognition object, stored globally if we need manual stop
+              // For simplicity, we usually let it finish or rely on 'end' event
+              return; 
+          }
+
+          const recognition = new SpeechRecognition();
+          recognition.lang = 'en-US'; // You can change to 'ta-IN' for Tamil if preferred
+          recognition.interimResults = false;
+          recognition.maxAlternatives = 1;
+
+          recognition.start();
+
+          // UI Updates
+          micBtn.classList.add("listening");
+          inputEl.placeholder = "Listening...";
+          inputEl.disabled = true;
+
+          recognition.onresult = (event) => {
+              const speechResult = event.results[0][0].transcript;
+              inputEl.value = speechResult;
+              console.log("Voice Input:", speechResult);
+              // Automatically send the command!
+              sendCommand();
+          };
+
+          recognition.onspeechend = () => {
+              recognition.stop();
+              resetMicUI();
+          };
+
+          recognition.onerror = (event) => {
+              console.error("Speech recognition error", event.error);
+              resetMicUI();
+              if (event.error !== 'no-speech') {
+                  appendOutput(`Voice Error: ${event.error}`, "log-error");
+              }
+          };
+      }
+
+      function resetMicUI() {
+          micBtn.classList.remove("listening");
+          inputEl.placeholder = "Enter a prompt or command...";
+          inputEl.disabled = false;
+          inputEl.focus();
+      }
+
+      // --- Core Functions (sendCommand, handleStandard, handleCode) ---
+      async function sendCommand() {
+        if (isProcessing) return;
+        const cmd = inputEl.value.trim();
+        if (!cmd) return;
+        autocompleteBox.style.display = "none";
+        appendOutput(`<span class="log-prompt">${cwdEl.innerText}</span> ${cmd}`, "log-entry");
+        history.push(cmd);
+        historyIndex = history.length;
+        inputEl.value = "";
+        
+        // If user submitted a project request, turn off project mode
+        if (isProjectMode) {
+            toggleProjectMode();
+        }
+
+        const isCodeCmd = cmd.toLowerCase().includes("write code") || cmd.toLowerCase().includes("generate code") || / (c|c\+\+|java|python|js|html|css)\s+file/.test(cmd.toLowerCase());
+        setProcessing(true);
+        if (isCodeCmd) {
+          await handleCodeGenerationCommand(cmd);
+        } else {
+          await handleStandardCommand(cmd);
+        }
+        setProcessing(false);
+      }
+
+      async function handleStandardCommand(cmd) {
+        try {
+          const res = await fetch(`${API_BASE}/execute`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nlp_text: cmd })
+          });
+          const data = await res.json();
+
+          if (data.message) {
+            // Check if this is a project log
+            if (data.message.includes("Log:\n")) {
+                const parts = data.message.split("Log:\n");
+                appendOutput(formatMessage(parts[0]), "log-success"); // Main message
+                // Format the log part in a <pre> tag for newlines
+                const log_msg = `<pre class="log-success">${formatMessage(parts[1])}</pre>`;
+                appendOutput(log_msg, ""); // Append without extra class
+            } else {
+                appendOutput(formatMessage(data.message), "log-success");
+            }
+          } else if (data.error) {
+            appendOutput(formatMessage(data.error), "log-error");
+            
+          } else {
+            appendOutput("Received unexpected response.", "log-error");
+          }
+          
+
+          // --- NEW: Handle Proactive Follow-up ---
+          if (data.follow_up_prompt) {
+            await sleep(500); // Small delay for effect
+            appendOutput(data.follow_up_prompt, "log-info");
+          }
+          // --- End New ---
+
+          await updateCWD();
+          await loadFileTree();
+        } catch (err) {
+          appendOutput(`Connection Error: ${err.message}`, "log-error");
+          setStatus("error", "Connection Error");
+        }
+      }
+      
+      async function handleCodeGenerationCommand(cmd) {
+        const taskListClone = taskTemplate.content.cloneNode(true);
+        const taskListEl = outputEl.appendChild(taskListClone.firstElementChild);
+        scrollToBottom();
+        const updateTask = (id, icon, text, statusClass = "") => {
+          const taskItem = taskListEl.querySelector(`[data-task-id="${id}"]`);
+          if (taskItem) {
+            taskItem.querySelector(".task-status").innerHTML = icon === "spinner" ? `<span class="spinner"></span>` : `<i data-lucide="${icon}"></i>`;
+            taskItem.querySelector(".task-label").textContent = text;
+            taskItem.className = `task-item ${statusClass}`;
+            lucide.createIcons();
+          }
+        };
+        try {
+          updateTask(1, "spinner", "Analyzing intent...", "active");
+          await sleep(600);
+          updateTask(1, "check-circle", "Intent analyzed.", "success");
+          updateTask(2, "spinner", "Engine generating code...", "active");
+          const res = await fetch(`${API_BASE}/execute`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nlp_text: cmd })
+          });
+          const data = await res.json();
+          if (data.error) {
+            updateTask(2, "x-circle", "Engine failed generation.", "error");
+            appendOutput(formatMessage(data.error), "log-error");
+            return;
+          }
+          updateTask(2, "check-circle", "Code generated.", "success");
+          updateTask(3, "spinner", "Saving file...", "active");
+          await sleep(400);
+          updateTask(3, "check-circle", "File saved.", "success");
+          appendOutput(formatMessage(data.message), "log-success");
+          if (data.code) {
+            const langMatch = data.message.match(/\.(\w+)$/);
+            const lang = langMatch ? langMatch[1] : 'clike';
+            appendHighlightedCode(data.code, lang);
+          }
+          await updateCWD();
+          await loadFileTree();
+        } catch (err) {
+          updateTask(2, "x-circle", "Connection error.", "error");
+          appendOutput(`Connection Error: ${err.message}`, "log-error");
+          setStatus("error", "Connection Error");
+        }
+      }
+      // --- NEW: Format Project Structure List ---
+      function formatProjectStructure(text) {
+          // Split by the markers found in commands.py output
+          const parts = text.split(/(Created (?:file|folder):)/g);
+          let html = '<div class="project-structure">';
+          html += `<div class="structure-header"><i data-lucide="package"></i> Project Generation Report</div>`;
+          html += '<ul class="structure-list">';
+          
+          // Start loop from 1 to skip the intro text
+          for (let i = 1; i < parts.length; i += 2) {
+              const typeStr = parts[i]; 
+              if (!typeStr) continue;
+              const name = parts[i+1] ? parts[i+1].trim() : "";
+              
+              const isFolder = typeStr.includes("folder");
+              const icon = isFolder ? "folder" : "file-code";
+              const colorClass = isFolder ? "folder-item" : "file-item";
+              
+              html += `<li class="structure-item ${colorClass}">
+                          <i data-lucide="${icon}"></i> 
+                          <span>${name}</span>
+                       </li>`;
+          }
+          html += '</ul></div>';
+          // Re-render icons after a short delay
+          setTimeout(() => { if(window.lucide) lucide.createIcons(); }, 50);
+          return html;
+      }
+
+      // --- Undo Click Handler ---
+      async function handleUndoClick() {
+            if (isProcessing) return; // Don't undo while processing
+            setProcessing(true); // Show spinner
+            appendOutput('Attempting to undo last action...', 'log-info');
+            try {
+                const res = await fetch(`${API_BASE}/undo`, { method: "POST" });
+                const data = await res.json();
+                if (data.message) { appendOutput(formatMessage(data.message), "log-success"); }
+                else if (data.error) { appendOutput(formatMessage(data.error), "log-error"); }
+                else { appendOutput("Received an unexpected response from undo.", "log-error"); }
+                await updateCWD(); await loadFileTree(); // Refresh after undo
+            } catch (err) { appendOutput(`Undo failed: ${err.message}`, "log-error"); setStatus('error', 'Undo Error'); }
+            finally { setProcessing(false); } // Hide spinner
+      }
+
+      // --- UI & Helper Functions ---
+      function setProcessing(processing) {
+        isProcessing = processing;
+        sendBtn.disabled = processing;
+        inputEl.disabled = processing;
+        if (processing) {
+          setStatus("processing", "Processing");
+          sendBtn.innerHTML = `<span class="spinner" style="width:18px;height:18px;"></span>`;
+        } else {
+          setStatus("ready", "Ready");
+          sendBtn.innerHTML = `<i data-lucide="send-horizontal"></i>`;
+          lucide.createIcons();
+          inputEl.focus();
+        }
+      }
+      async function updateCWD() {
+        try {
+          const res = await fetch(`${API_BASE}/cwd`);
+          const data = await res.json();
+          cwdEl.innerText = data.cwd + " >";
+        } catch {
+          cwdEl.innerText = "CWD unavailable >";
+        }
+      }
+      function setStatus(status, text) {
+        statusDot.className = "status-dot " + status;
+        statusText.textContent = text;
+      }
+      function appendOutput(html, className) {
+        const entry = document.createElement("div");
+        if (className) {
+          entry.className = className;
+        }
+        // Check if the html is a <pre> tag, if so, don't wrap it
+        if (html.trim().startsWith('<pre')) {
+            outputEl.insertAdjacentHTML('beforeend', html);
+        } else {
+            entry.innerHTML = html;
+            outputEl.appendChild(entry);
+        }
+        scrollToBottom();
+      }
+      function appendHighlightedCode(code, language) {
+        const pre = document.createElement("pre");
+        const codeEl = document.createElement("code");
+        codeEl.className = `language-${language}`;
+        codeEl.textContent = code;
+        pre.appendChild(codeEl);
+        outputEl.appendChild(pre);
+        Prism.highlightElement(codeEl);
+        scrollToBottom();
+      }
+      function formatMessage(message) {
+        // Escape HTML to prevent injection
+        let safeMessage = message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        // Regex to find paths and make them clickable
+        const pathRegex = /([A-Za-z]:\\[\w\\.-]+)|([\.\/\w-]+\.[\w]+)/g;
+        return safeMessage.replace(pathRegex, (match) => `<span class="clickable-path" onclick="copyToClipboard('${match.replace(/\\/g, "\\\\")}')" title="Click to copy path">${match}</span>`);
+      }
+      function copyToClipboard(text) {
+        // Use the clipboard API
+        navigator.clipboard.writeText(text).then(() => {
+            console.log("Copied to clipboard:", text);
+            // Optional: Show a small "Copied!" notification
+        }).catch(err => {
+            console.error("Failed to copy text: ", err);
+        });
+      }
+      function scrollToBottom() {
+        outputEl.scrollTop = outputEl.scrollHeight;
+      }
+      function sleep(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+      function toggleSidebar() {
+        isSidebarCollapsed = !isSidebarCollapsed;
+        sidebar.classList.toggle("collapsed", isSidebarCollapsed);
+        mainContent.classList.toggle("expanded", isSidebarCollapsed);
+        sidebarCollapse.innerHTML = isSidebarCollapsed ? '<i data-lucide="chevrons-right"></i>' : '<i data-lucide="chevrons-left"></i>';
+        lucide.createIcons();
+      }
+
+      // --- File Tree Functions ---
+      async function loadFileTree() {
+        try {
+          const res = await fetch(`${API_BASE}/list`);
+          if (!res.ok) throw new Error(`Server ${res.status}`);
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+          const treeData = data.items || [];
+          flatFileList = [];
+          fileTreeEl.innerHTML = "";
+          if (treeData.length === 0) {
+            fileTreeEl.innerHTML = `<li class="file-tree-item" style="color:var(--text-secondary);">Workspace empty.</li>`;
+            return;
+          }
+          fileTreeEl.appendChild(createTreeHtml(treeData, ""));
+          lucide.createIcons();
+        } catch (err) {
+          console.error("Tree load error:", err);
+          fileTreeEl.innerHTML = `<li class="file-tree-item" style="color:var(--text-error);">Failed to load files.</li>`;
+        }
+      }
+      function createTreeHtml(nodes, currentPath) {
+        const ul = document.createElement("ul");
+        ul.className = "file-tree";
+        nodes.forEach(node => {
+          const li = document.createElement("li");
+          li.className = "file-tree-item";
+          const nodePath = currentPath ? `${currentPath}/${node.name}` : node.name;
+          if (node.type === 'file') {
+            li.innerHTML = `<i data-lucide="file-text" class="file-icon"></i> <span class="file-name">${node.name}</span>`;
+            flatFileList.push(nodePath.replace(/\\/g, '/'));
+          } else {
+            li.classList.add("folder", "collapsed");
+            li.innerHTML = `<i data-lucide="chevron-right" class="folder-toggle"></i> <i data-lucide="folder" class="file-icon"></i> <span class="file-name">${node.name}</span>`;
+            flatFileList.push(nodePath.replace(/\\/g, '/'));
+            if (node.children && node.children.length > 0) {
+              li.appendChild(createTreeHtml(node.children, nodePath));
+            }
+            li.addEventListener("click", (e) => {
+              e.stopPropagation();
+              li.classList.toggle("collapsed");
+              const icon = li.querySelector('.folder-toggle');
+              icon.setAttribute('data-lucide', li.classList.contains('collapsed') ? 'chevron-right' : 'chevron-down');
+              lucide.createIcons();
+            });
+          }
+          ul.appendChild(li);
+        });
+        return ul;
+      }
+
+      // --- Event Handlers ---
+      function handleInputKeyDown(e) {
+        const items = autocompleteBox.querySelectorAll('.autocomplete-item');
+        const visible = autocompleteBox.style.display !== 'none' && items.length > 0;
+        if (e.key === "Enter") {
+          if (visible && autocompleteIndex > -1) {
+            e.preventDefault();
+            inputEl.value = items[autocompleteIndex].dataset.value;
+            autocompleteBox.style.display = 'none';
+          } else {
+            sendCommand();
+          }
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          if (visible) {
+            if (autocompleteIndex > 0) autocompleteIndex--;
+            updateAutocompleteSelection(items);
+          } else if (historyIndex > 0) {
+            historyIndex--;
+            inputEl.value = history[historyIndex];
+          }
+        } else if (e.key === "ArrowDown") {
+          e.preventDefault();
+          if (visible) {
+            if (autocompleteIndex < items.length - 1) autocompleteIndex++;
+            updateAutocompleteSelection(items);
+          } else {
+            if (historyIndex < history.length - 1) {
+              historyIndex++;
+              inputEl.value = history[historyIndex];
+            } else {
+              inputEl.value = "";
+              historyIndex = history.length;
+            }
+          }
+        } else if (e.key === "Tab") {
+          if (visible && items.length > 0) {
+            e.preventDefault();
+            inputEl.value = items[autocompleteIndex > -1 ? autocompleteIndex : 0].dataset.value;
+            autocompleteBox.style.display = 'none';
+          }
+        } else if (e.key === "Escape") {
+          autocompleteBox.style.display = 'none';
+        }
+      }
+      function handleAutocompleteInput() {
+        const value = inputEl.value;
+        const parts = value.split(' ');
+        const action = parts[0].toLowerCase();
+        if ((action === 'open' || action === 'delete' || action === 'go' || action === 'cd' || action === 'rename') && parts.length > 1) {
+          const term = parts[parts.length - 1].toLowerCase().replace(/\\/g, '/');
+          if (term === "") {
+            autocompleteBox.style.display = 'none';
+            return;
+          }
+          const suggestions = flatFileList.filter(item => item.toLowerCase().startsWith(term)).slice(0, 5);
+          if (suggestions.length > 0) {
+            const prefix = parts.slice(0, -1).join(' ') + ' ';
+            autocompleteBox.innerHTML = suggestions.map(s => `<div class="autocomplete-item" data-value="${prefix}${s}">${s}</div>`).join('');
+            autocompleteBox.querySelectorAll('.autocomplete-item').forEach(item => {
+              item.addEventListener('click', () => {
+                inputEl.value = item.dataset.value;
+                autocompleteBox.style.display = 'none';
+                inputEl.focus();
+              });
+            });
+            autocompleteBox.style.display = 'block';
+            autocompleteIndex = -1;
+          } else {
+            autocompleteBox.style.display = 'none';
+          }
+        } else {
+          autocompleteBox.style.display = 'none';
+        }
+      }
+      function updateAutocompleteSelection(items) {
+        items.forEach((item, index) => {
+          item.classList.toggle('selected', index === autocompleteIndex);
+        });
+      }
+
+    </script>
+  </body>
+</html>
